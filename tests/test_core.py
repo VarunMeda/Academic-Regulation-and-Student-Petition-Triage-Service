@@ -54,3 +54,27 @@ def test_tools_and_injection_escalation(tmp_path):
     result = TriageGraph(RegulationIndex(str(index))).invoke(petition)
     assert result.routing == "refer-to-committee" and "injection" in result.verification
 
+def test_memory_queue_executes_async_and_idempotency():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    import time
+    client=TestClient(app)
+    payload={"category":"attendance","description":"Documented medical attendance shortfall","attendance_percentage":70,"prescribed_minimum":75,"medical_documented":True,"condonation_requested":True}
+    import uuid
+    key="test-queue-idempotency-"+uuid.uuid4().hex
+    first=client.post("/api/petitions",json=payload,headers={"Idempotency-Key":key})
+    second=client.post("/api/petitions",json=payload,headers={"Idempotency-Key":key})
+    assert first.status_code == 202 and second.json()["duplicate"] is True
+    assert first.json()["run_id"] == second.json()["run_id"]
+    for _ in range(100):
+        time.sleep(.1); status=client.get("/api/runs/"+first.json()["run_id"]).json()
+        if status["status"] in {"completed","escalated","failed"}: break
+    assert status["status"] == "escalated"
+
+def test_queue_message_contains_only_validated_job_data():
+    from app.queue import Job, QueueClient
+    queue=QueueClient(backend="memory")
+    queue.enqueue(Job("run-1","corr-1",{"category":"attendance","attendance_percentage":70},0))
+    job=queue.dequeue(timeout=0)
+    assert job.run_id == "run-1" and job.correlation_id == "corr-1" and "category" in job.payload
+

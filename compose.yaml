@@ -2,7 +2,12 @@ services:
   api:
     build: .
     ports: ["8000:8000"]
-    environment: ["DATABASE_PATH=/service/data/triage.db", "INDEX_PATH=/service/data/index.json"]
+    environment:
+      DATABASE_PATH: /service/runtime/triage.db
+      INDEX_PATH: /service/data/index.json
+      QUEUE_BACKEND: redis
+      REDIS_URL: redis://redis:6379/0
+    volumes: ["run-data:/service/runtime"]
     depends_on:
       redis: {condition: service_healthy}
     healthcheck:
@@ -12,11 +17,17 @@ services:
       retries: 5
   worker:
     build: .
-    command: ["python", "-m", "http.server", "8081"]
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_PATH: /service/runtime/triage.db
+      INDEX_PATH: /service/data/index.json
+      QUEUE_BACKEND: redis
+      REDIS_URL: redis://redis:6379/0
+    volumes: ["run-data:/service/runtime"]
     depends_on:
       redis: {condition: service_healthy}
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9101/metrics')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,5 +41,8 @@ services:
   prometheus:
     image: prom/prometheus:v2.53.0
     ports: ["9090:9090"]
-    depends_on: [api]
+    volumes: ["./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    depends_on: [api, worker]
 
+volumes:
+  run-data:
