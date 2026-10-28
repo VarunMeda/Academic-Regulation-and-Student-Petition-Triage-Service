@@ -5,6 +5,7 @@ __pycache__/
 data/runs.jsonl
 data/index.json
 data/*.db
+data/*.faiss
 *.pyc
 coverage.xml
 .coverage

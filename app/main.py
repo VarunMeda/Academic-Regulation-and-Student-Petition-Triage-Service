@@ -1,4 +1,5 @@
 import asyncio, uuid
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -10,6 +11,7 @@ from .store import Store
 
 app=FastAPI(title="Academic Petition Triage Service", version="0.1.0")
 store=Store(settings.database_path)
+executor=ThreadPoolExecutor(max_workers=4, thread_name_prefix="petition-worker")
 try: graph=TriageGraph(RegulationIndex(settings.index_path))
 except FileNotFoundError: graph=None
 
@@ -28,17 +30,17 @@ def ready():
 @app.get("/metrics", response_class=PlainTextResponse)
 def metrics(): return "# HELP triage_runs_total Total submitted runs\n# TYPE triage_runs_total counter\ntriage_runs_total 0\n"
 
-async def process(rid, petition):
+def process_sync(rid, petition):
     store.update(rid,"running")
     try:
         if graph is None: raise RuntimeError("corpus index unavailable")
-        result=await asyncio.wait_for(asyncio.to_thread(graph.invoke,petition),settings.run_timeout_seconds)
+        result=graph.invoke(petition)
         store.update(rid,"completed",result.model_dump())
     except Exception as exc: store.update(rid,"escalated",{"error":str(exc),"routing":"refer-to-committee","human_review_required":True})
 
 @app.post("/api/petitions", status_code=202)
 async def submit(petition: PetitionRequest, x_correlation_id: str | None = Header(default=None)):
-    cid=x_correlation_id or str(uuid.uuid4()); rid=store.create(petition.model_dump(),cid); asyncio.create_task(process(rid,petition)); return {"run_id":rid,"status":"pending","correlation_id":cid}
+    cid=x_correlation_id or str(uuid.uuid4()); rid=store.create(petition.model_dump(),cid); executor.submit(process_sync,rid,petition); return {"run_id":rid,"status":"pending","correlation_id":cid}
 
 @app.get("/api/runs/{run_id}")
 def status(run_id):
