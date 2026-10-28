@@ -32,7 +32,7 @@ def ingest(corpus_dir: str, index_path: str, model_name: str | None = None) -> d
     for path in sorted(root.glob("*.txt")):
         try: chunks.extend(chunk_text(path.read_text(encoding="utf-8"), path.name))
         except Exception as exc: errors.append({"file": path.name, "error": str(exc)})
-    metadata={"built_at": time.time(), "documents": sorted({c.document for c in chunks}), "versions": sorted({c.version for c in chunks}), "chunks": len(chunks), "duration_seconds": round(time.perf_counter()-start,4), "errors": errors, "synthetic": True, "embedding_backend":"lexical"}
+    metadata={"built_at": time.time(), "documents": sorted({c.document for c in chunks}), "versions": sorted({c.version for c in chunks}), "chunks": len(chunks), "duration_seconds": 0.0, "errors": errors, "synthetic": True, "embedding_backend":"lexical"}
     payload={"metadata": metadata, "chunks": [asdict(c) for c in chunks]}
     if model_name:
         try:
@@ -51,6 +51,7 @@ def ingest(corpus_dir: str, index_path: str, model_name: str | None = None) -> d
                 metadata["vector_index"]="numpy-embeddings"
         except Exception as exc:
             errors.append({"embedding":f"sentence-transformers unavailable ({type(exc).__name__}); retained lexical index"}); metadata["errors"]=errors
+    metadata["duration_seconds"] = round(time.perf_counter()-start,4)
     Path(index_path).parent.mkdir(parents=True, exist_ok=True)
     Path(index_path).write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return metadata
