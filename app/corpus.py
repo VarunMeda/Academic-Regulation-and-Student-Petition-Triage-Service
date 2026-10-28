@@ -1,5 +1,5 @@
 """Corpus ingestion and local-first semantic retrieval."""
-import json, re, time
+import json, os, re, time
 from pathlib import Path
 from dataclasses import dataclass, asdict
 
@@ -36,6 +36,7 @@ def ingest(corpus_dir: str, index_path: str, model_name: str | None = None) -> d
     payload={"metadata": metadata, "chunks": [asdict(c) for c in chunks]}
     if model_name:
         try:
+            os.environ.setdefault("USE_TF", "0")
             from sentence_transformers import SentenceTransformer
             model=SentenceTransformer(model_name)
             payload["embeddings"] = model.encode([c.text for c in chunks], normalize_embeddings=True).tolist()
@@ -61,6 +62,7 @@ class RegulationIndex:
         self.data=json.loads(p.read_text(encoding="utf-8")); self.chunks=self.data["chunks"]; self.model=None; self.vector_index=None
         if self.data.get("embeddings") and model_name:
             try:
+                os.environ.setdefault("USE_TF", "0")
                 from sentence_transformers import SentenceTransformer
                 self.model=SentenceTransformer(model_name)
             except Exception: pass
