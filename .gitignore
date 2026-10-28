@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+data/runs.jsonl
+data/index.json
+data/*.db
+*.pyc
+coverage.xml
+.coverage
+

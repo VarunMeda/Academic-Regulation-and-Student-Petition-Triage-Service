@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "academic-petition-triage"
+version = "0.1.0"
+description = "Evidence-backed academic petition triage service"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.110,<1",
+  "pydantic>=2.0,<3",
+  "uvicorn[standard]>=0.29,<1",
+  "prometheus-client>=0.20,<1",
+]
+
+[project.optional-dependencies]
+full = ["langgraph>=0.2", "langchain-core>=0.3", "sentence-transformers>=3", "faiss-cpu>=1.8", "redis>=5", "pypdf>=5"]
+test = ["pytest>=8", "httpx>=0.27"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
