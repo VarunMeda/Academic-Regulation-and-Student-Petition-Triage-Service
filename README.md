@@ -9,6 +9,13 @@ python -m app.ingest
 uvicorn app.main:app --reload
 ```
 
+For a local semantic index when the optional packages and model are available:
+
+```powershell
+pip install -e ".[full]"
+python -m app.ingest --model-name sentence-transformers/all-MiniLM-L6-v2
+```
+
 Submit a synthetic attendance case:
 
 ```powershell
@@ -25,11 +32,11 @@ docker compose config
 docker compose up --build
 ```
 
-The core is dependency-light for offline development. Optional production integrations are declared in the `full` extra: LangGraph/LangChain, sentence-transformers, FAISS, Redis and PDF extraction. The current lexical index is a deterministic fallback; real corpus ingestion and vector re-embedding remain the next milestone.
+The core is dependency-light for offline development. The `full` extra provides LangGraph/LangChain and sentence-transformers/FAISS integrations. `python -m app.ingest` is idempotent and rebuilds only the index artifact; re-run it with a different model to re-embed without changing API or agent code. In this environment those optional packages were unavailable, so the tested index uses the explicit deterministic lexical fallback and the LangGraph runtime falls back to the same bounded two-node graph semantics.
 
 ## Status
 
-Implemented: F1-F2, F4-F8 core path; A2-A4 core path; D1-D3 foundation; synthetic critical scenario, citation verification, async status persistence, health endpoints and tests.
+Implemented and tested: F1-F2, F4-F8 core path; A1-A4 core path; D1-D3 foundation; metadata-preserving idempotent ingestion; optional semantic/LangChain adapters; bounded tool calls; injection escalation; synthetic critical scenario and citation verification.
 
-Partial/deferred: real PDF/OCR ingestion, sentence-transformers/FAISS retrieval, Redis-backed worker queue, full LangGraph runtime, prompt variants/evaluation, OpenTelemetry/Grafana, rate limiting, feedback aggregation, Locust measurements, and real university corpus confirmation.
+Implemented but not fully verified here: sentence-transformers/FAISS indexing and the LangGraph execution path, because the local environment lacks those optional packages and network access prevented installation. Deferred: real PDF/OCR ingestion, Redis-backed worker queue, prompt variants/evaluation, OpenTelemetry/Grafana, rate limiting, feedback aggregation, Locust measurements, and real university corpus confirmation.
 
