@@ -78,3 +78,19 @@ def test_queue_message_contains_only_validated_job_data():
     job=queue.dequeue(timeout=0)
     assert job.run_id == "run-1" and job.correlation_id == "corr-1" and "category" in job.payload
 
+def test_runtime_extra_excludes_optional_embedding_stack():
+    import tomllib
+    from pathlib import Path
+    config=tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    runtime=set(config["project"]["optional-dependencies"]["runtime"])
+    semantic=" ".join(config["project"]["optional-dependencies"]["semantic"])
+    assert not any(name in " ".join(runtime) for name in ("torch", "sentence-transformers", "faiss-cpu", "triton"))
+    assert "torch" in semantic and "faiss-cpu" in semantic
+
+def test_docker_installs_lightweight_runtime_extra():
+    from pathlib import Path
+    dockerfile=Path("Dockerfile").read_text(encoding="utf-8")
+    assert '-e ".[runtime]"' in dockerfile
+    assert "--timeout 120" in dockerfile and "--retries 5" in dockerfile
+    assert '[full]' not in dockerfile
+

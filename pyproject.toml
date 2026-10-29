@@ -15,6 +15,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+runtime = ["langgraph>=1.2,<1.3", "langchain-core>=1.7,<1.8", "redis>=5.2,<5.3"]
+semantic = ["sentence-transformers>=5.6,<5.7", "transformers>=4.57,<4.58", "torch>=2.5,<2.6", "faiss-cpu>=1.15,<1.16", "numpy>=1.26,<2"]
 full = ["langgraph>=1.2,<1.3", "langchain-core>=1.7,<1.8", "sentence-transformers>=5.6,<5.7", "transformers>=4.57,<4.58", "torch>=2.5,<2.6", "faiss-cpu>=1.15,<1.16", "numpy>=1.26,<2", "redis>=5.2,<5.3", "pypdf>=6,<7"]
 test = ["pytest>=9,<10", "httpx>=0.28,<0.29"]
 
