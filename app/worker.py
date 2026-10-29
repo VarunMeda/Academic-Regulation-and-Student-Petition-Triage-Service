@@ -1,4 +1,4 @@
-import logging, time
+﻿import logging, time
 from .agents import TriageGraph
 from .config import settings
 from .corpus import RegulationIndex
@@ -18,13 +18,13 @@ def handle(job):
         from .models import PetitionRequest
         result=graph.invoke(PetitionRequest.model_validate(job.payload))
         status="escalated" if result.human_review_required else "completed"
-        store.update(job.run_id,status,result.model_dump()); worker_tasks.inc("escalated" if result.human_review_required else "success")
-        if result.human_review_required: escalations.inc("human_review")
+        store.update(job.run_id,status,result.model_dump()); worker_tasks.labels(outcome="escalated" if result.human_review_required else "success").inc()
+        if result.human_review_required: escalations.labels(reason="human_review").inc()
         return True
     except Exception as exc:
         if job.attempt < settings.max_retries:
-            store.update(job.run_id,"pending",{"retrying":True,"attempt":job.attempt+1,"error":str(exc)}); queue.retry(job); worker_tasks.inc("retry"); return False
-        store.update(job.run_id,"failed",{"error":str(exc),"routing":"refer-to-committee","human_review_required":True}); worker_tasks.inc("failed"); return False
+            store.update(job.run_id,"pending",{"retrying":True,"attempt":job.attempt+1,"error":str(exc)}); queue.retry(job); worker_tasks.labels(outcome="retry").inc(); return False
+        store.update(job.run_id,"failed",{"error":str(exc),"routing":"refer-to-committee","human_review_required":True}); worker_tasks.labels(outcome="failed").inc(); return False
     finally: processing_latency.observe(time.perf_counter()-started)
 
 def run_forever():
@@ -36,3 +36,5 @@ def run_forever():
         if job: handle(job)
 
 if __name__ == "__main__": run_forever()
+
+
