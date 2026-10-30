@@ -48,3 +48,10 @@ class TriageResult(BaseModel):
     citations: list[Citation]
     prompt_version: str = "petition-analyst-v1/research-verifier-v1"
 
+class FeedbackRequest(BaseModel):
+    run_id: str = Field(min_length=1, max_length=80)
+    category: str = Field(min_length=1, max_length=40)
+    useful: bool
+    citations_correct: bool
+    comments: str | None = Field(default=None, max_length=1000)
+

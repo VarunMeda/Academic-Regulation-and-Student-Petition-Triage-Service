@@ -1,0 +1,12 @@
+{
+  "title": "Petition Triage Overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {"type":"timeseries","title":"API requests/sec","gridPos":{"x":0,"y":0,"w":12,"h":8},"targets":[{"expr":"rate(triage_api_requests_total[5m])"}]},
+    {"type":"timeseries","title":"Processing latency","gridPos":{"x":12,"y":0,"w":12,"h":8},"targets":[{"expr":"histogram_quantile(0.95, sum(rate(triage_processing_seconds_bucket[5m])) by (le))"}]},
+    {"type":"timeseries","title":"Queue depth","gridPos":{"x":0,"y":8,"w":12,"h":8},"targets":[{"expr":"triage_queue_depth"}]},
+    {"type":"timeseries","title":"Worker outcomes","gridPos":{"x":12,"y":8,"w":12,"h":8},"targets":[{"expr":"rate(triage_worker_tasks_total[5m])"}]}
+  ]
+}

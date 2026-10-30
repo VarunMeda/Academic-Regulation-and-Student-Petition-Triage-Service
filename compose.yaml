@@ -43,6 +43,25 @@ services:
     ports: ["9090:9090"]
     volumes: ["./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
     depends_on: [api, worker]
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports: ["3000:3000"]
+    volumes:
+      - "./infra/grafana/provisioning:/etc/grafana/provisioning:ro"
+    depends_on: [prometheus]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    ports: ["16686:16686", "4317:4317"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:14269/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   run-data:

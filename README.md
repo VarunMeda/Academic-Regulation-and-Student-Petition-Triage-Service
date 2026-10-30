@@ -34,16 +34,18 @@ docker compose config
 docker compose up --build
 ```
 
-Compose runs four services: `api` validates and enqueues petitions, `worker` consumes Redis jobs and persists LangGraph results, `redis` provides the queue, and `prometheus` scrapes API/worker metrics. Run state is stored in the named `run-data` volume. The image installs `.[runtime]` and builds the documented synthetic lexical index; semantic model weights are not downloaded during container startup. To use semantic retrieval in a container, install `.[semantic]`, provide the model cache explicitly, and run the ingestion command against the mounted cache before demonstration.
+Compose runs API, worker, Redis, Prometheus, Grafana and Jaeger services. The API validates and enqueues petitions; the worker consumes Redis jobs and persists LangGraph results. Run state is stored in the named `run-data` volume. The image installs `.[runtime]` and builds the documented synthetic lexical index; semantic model weights are not downloaded during container startup. To use semantic retrieval in a container, install `.[semantic]`, provide the model cache explicitly, and run the ingestion command against the mounted cache before demonstration.
 
 For the local fallback queue, leave `QUEUE_BACKEND=memory`. Compose sets `QUEUE_BACKEND=redis`. Redis jobs contain only the run ID, correlation ID, validated petition fields, and retry attempt. Failures retry twice, then become `failed`; committee/discretion results are `escalated`. `Idempotency-Key` repeats return the original run ID without enqueueing a duplicate.
 
-Health and metrics:
+Health, metrics and local dashboards:
 
 ```powershell
 curl http://localhost:8000/health/live
 curl http://localhost:8000/health/ready
 curl http://localhost:8000/metrics
+# Grafana: http://localhost:3000
+# Jaeger: http://localhost:16686
 ```
 
 The core is dependency-light for offline development. The `full` extra provides LangGraph/LangChain and sentence-transformers/FAISS integrations. `python -m app.ingest` is idempotent and rebuilds only the index artifact; re-run it with a different model to re-embed without changing API or agent code. In this environment those optional packages were unavailable, so the tested index uses the explicit deterministic lexical fallback and the LangGraph runtime falls back to the same bounded two-node graph semantics.

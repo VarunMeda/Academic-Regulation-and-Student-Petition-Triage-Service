@@ -4,7 +4,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from .config import settings
-from .models import PetitionRequest
+from .models import FeedbackRequest, PetitionRequest
 from .corpus import RegulationIndex
 from .agents import TriageGraph
 from .metrics import api_requests, api_errors, render_metrics
@@ -66,5 +66,8 @@ def result(run_id):
     if not r: raise HTTPException(404,"run not found")
     if r["status"] not in {"completed","escalated","failed"}: raise HTTPException(409,"run not terminal")
     return r["result"]
-@app.post("/api/feedback")
-def feedback(payload: dict): return {"accepted":True,"message":"feedback endpoint available; persistence is deferred to the evaluation milestone"}
+@app.post("/api/feedback", status_code=201)
+def feedback(payload: FeedbackRequest):
+    run=store.get(payload.run_id)
+    if not run: raise HTTPException(404,"run not found")
+    store.feedback(payload.model_dump()); return {"accepted":True,"run_id":payload.run_id}

@@ -2,7 +2,7 @@ import json, sqlite3, time, uuid
 from pathlib import Path
 class Store:
     def __init__(self,path):
-        Path(path).parent.mkdir(parents=True,exist_ok=True); self.db=sqlite3.connect(path,check_same_thread=False); self.db.execute("create table if not exists runs(id text primary key,status text,payload text,result text,correlation_id text,created real,updated real,idempotency_key text unique)"); self.db.execute("create table if not exists quarantine(id integer primary key,errors text,correlation_id text,created real)"); self.db.commit()
+        Path(path).parent.mkdir(parents=True,exist_ok=True); self.db=sqlite3.connect(path,check_same_thread=False); self.db.execute("create table if not exists runs(id text primary key,status text,payload text,result text,correlation_id text,created real,updated real,idempotency_key text unique)"); self.db.execute("create table if not exists quarantine(id integer primary key,errors text,correlation_id text,created real)"); self.db.execute("create table if not exists feedback(id integer primary key,run_id text,category text,useful integer,citations_correct integer,comments text,created real)"); self.db.commit()
         try: self.db.execute("alter table runs add column idempotency_key text"); self.db.execute("create unique index if not exists idx_runs_idempotency on runs(idempotency_key)"); self.db.commit()
         except sqlite3.OperationalError: pass
     def create(self,payload,cid,idempotency_key=None):
@@ -18,4 +18,6 @@ class Store:
         if not r:return None
         return {"run_id":r[0],"status":r[1],"correlation_id":r[2],"created_at":r[3],"updated_at":r[4],"result":json.loads(r[5]) if r[5] else None}
     def quarantine(self,errors,cid): self.db.execute("insert into quarantine(errors,correlation_id,created) values(?,?,?)",(json.dumps(errors),cid,time.time())); self.db.commit()
+    def feedback(self, item):
+        self.db.execute("insert into feedback(run_id,category,useful,citations_correct,comments,created) values(?,?,?,?,?,?)",(item["run_id"],item["category"],int(item["useful"]),int(item["citations_correct"]),item.get("comments"),time.time())); self.db.commit()
 

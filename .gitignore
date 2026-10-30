@@ -6,6 +6,8 @@ data/runs.jsonl
 data/index.json
 data/*.db
 data/*.faiss
+evaluation/results/*.json
+evaluation/results/*.md
 *.pyc
 coverage.xml
 .coverage
