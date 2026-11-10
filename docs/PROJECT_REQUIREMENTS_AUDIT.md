@@ -35,3 +35,12 @@ docker compose up --build
 ```
 
 The last two commands require Docker and are not reported as passing unless Docker is available and the services actually start.
+
+
+## Follow-up patch verification (2026-11-02)
+
+- Fixed clean-start API initialization so a missing local index is built from the configured corpus automatically.
+- Added a simple browser client at `/`, a feedback summary endpoint, a quarantine inspection endpoint, and a basic per-process API rate limit.
+- Added regression tests for the browser client and quarantine/feedback endpoints.
+- Latest local test run: **15 passed, 2 skipped**. Python compile check passed. Evaluation runner: 22 synthetic scenarios; see README for the measured metrics.
+- Docker CLI is not available in the build workspace; Docker Compose build/startup, Redis execution, Grafana/Jaeger runtime, and scaled-worker measurements remain unverified.

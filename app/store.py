@@ -21,3 +21,13 @@ class Store:
     def feedback(self, item):
         self.db.execute("insert into feedback(run_id,category,useful,citations_correct,comments,created) values(?,?,?,?,?,?)",(item["run_id"],item["category"],int(item["useful"]),int(item["citations_correct"]),item.get("comments"),time.time())); self.db.commit()
 
+
+    def feedback_summary(self):
+        row=self.db.execute("select count(*),coalesce(sum(useful),0),coalesce(sum(citations_correct),0) from feedback").fetchone()
+        total,useful,citations=row
+        return {"total_feedback":total,"useful_count":useful,"citation_correct_count":citations,
+                "useful_rate":round(useful/total,4) if total else None,
+                "citation_correct_rate":round(citations/total,4) if total else None}
+    def quarantine_items(self, limit=50):
+        rows=self.db.execute("select id,errors,correlation_id,created from quarantine order by id desc limit ?",(limit,)).fetchall()
+        return [{"id":r[0],"field_errors":json.loads(r[1]),"correlation_id":r[2],"created_at":r[3]} for r in rows]

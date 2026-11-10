@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Academic Petition Triage</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#172033;background:#f3f6fb}*{box-sizing:border-box}
+body{margin:0}.wrap{max-width:980px;margin:36px auto;padding:0 18px}.hero{background:#142b4a;color:white;padding:28px;border-radius:18px}
+.hero h1{margin:0 0 8px;font-size:28px}.hero p{margin:0;color:#d5e2f3;line-height:1.5}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}.panel{background:white;padding:22px;border-radius:14px;box-shadow:0 4px 18px #1720330c}
+label{display:block;font-weight:600;margin:12px 0 6px}input,select,textarea{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
+textarea{min-height:90px}button{background:#1769aa;color:white;border:0;padding:12px 18px;border-radius:8px;font-weight:700;cursor:pointer;margin-top:16px}
+small,.muted{color:#64748b}.result{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55}.pill{display:inline-block;padding:4px 9px;border-radius:99px;background:#e6f4ea;color:#17633a;font-weight:700}
+.warn{background:#fff7e6;color:#805400;padding:12px;border-radius:8px;margin-top:14px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}}
+</style></head><body><main class="wrap">
+<section class="hero"><h1>Academic Regulation & Student Petition Triage</h1><p>Submit a synthetic petition and receive an evidence-backed advisory position. An authorised examination officer always makes the final decision.</p></section>
+<div class="grid"><section class="panel"><h2>Submit petition</h2><form id="petition">
+<label>Petition category</label><select id="category"><option value="attendance">Attendance shortfall</option><option value="re_evaluation">Re-evaluation</option><option value="re_registration">Re-registration</option><option value="medical_leave">Medical leave</option><option value="grade_grievance">Grade grievance</option></select>
+<label>Description</label><textarea id="description" minlength="10" required placeholder="Describe the petition...">Documented medical attendance shortfall</textarea>
+<label>Attendance percentage</label><input id="attendance" type="number" min="0" max="100" value="70">
+<label>Prescribed minimum (%)</label><input id="minimum" type="number" min="0" max="100" value="75">
+<label><input id="medical" type="checkbox" checked style="width:auto"> Medical documentation available</label>
+<label><input id="condonation" type="checkbox" checked style="width:auto"> Condonation requested</label>
+<button type="submit">Submit petition</button><p class="muted" id="status">API status: checking…</p></form></section>
+<section class="panel"><h2>Assessment result</h2><div id="result" class="result muted">Submit a petition to see its run status, advisory outcome and citations.</div></section></div>
+<p class="warn"><b>Demo corpus notice:</b> the included attendance clauses are synthetic examples, not official PESU or other university regulations. Replace them with verified current regulations before an institutional demonstration.</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+async function health(){try{let r=await fetch('/health/ready');$('status').textContent=r.ok?'API status: ready':'API status: not ready'}catch(e){$('status').textContent='API status: unavailable'}}
+health();
+$('petition').addEventListener('submit',async e=>{e.preventDefault();$('result').textContent='Submitting…';
+const category=$('category').value, payload={category,description:$('description').value};
+if(category==='attendance'){payload.attendance_percentage=Number($('attendance').value);payload.prescribed_minimum=Number($('minimum').value);payload.medical_documented=$('medical').checked;payload.condonation_requested=$('condonation').checked}
+try{const r=await fetch('/api/petitions',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':crypto.randomUUID()},body:JSON.stringify(payload)});const data=await r.json();if(!r.ok)throw new Error(JSON.stringify(data,null,2));
+$('result').textContent='Run ID: '+data.run_id+'\nStatus: '+data.status+'\nWaiting for worker…';
+for(let i=0;i<90;i++){await new Promise(x=>setTimeout(x,700));let sr=await fetch('/api/runs/'+data.run_id);let st=await sr.json();$('result').textContent='Run ID: '+data.run_id+'\nStatus: '+st.status;if(['completed','escalated','failed'].includes(st.status)){let rr=await fetch('/api/runs/'+data.run_id+'/result');let out=await rr.json();$('result').textContent=JSON.stringify(out,null,2);break}}
+}catch(err){$('result').textContent='Request failed: '+err.message}
+});
+</script></body></html>

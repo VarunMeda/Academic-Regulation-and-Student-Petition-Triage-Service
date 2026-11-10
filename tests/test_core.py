@@ -100,3 +100,21 @@ def test_feedback_is_validated_and_run_linked():
     response=TestClient(app).post("/api/feedback",json={"run_id":"missing","category":"quality","useful":True,"citations_correct":True})
     assert response.status_code == 404
 
+
+
+def test_web_client_is_served():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    response=TestClient(app).get("/")
+    assert response.status_code == 200
+    assert "Academic Regulation" in response.text
+
+def test_feedback_summary_and_quarantine_api():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    client=TestClient(app)
+    bad=client.post("/api/petitions",json={"category":"attendance","description":"bad"})
+    assert bad.status_code == 422
+    quarantined=client.get("/api/quarantine")
+    assert quarantined.status_code == 200 and len(quarantined.json()["items"]) >= 1
+    assert client.get("/api/feedback/summary").status_code == 200

@@ -13,6 +13,7 @@ class Settings:
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     queue_backend: str = os.getenv("QUEUE_BACKEND", "memory")
     max_retries: int = int(os.getenv("MAX_RETRIES", "2"))
+    rate_limit_per_minute: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "60"))
 
 settings = Settings()
 

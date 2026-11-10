@@ -1,11 +1,12 @@
-import uuid
+import uuid, time
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, HTMLResponse
 from .config import settings
 from .models import FeedbackRequest, PetitionRequest
-from .corpus import RegulationIndex
+from .corpus import RegulationIndex, ingest
 from .agents import TriageGraph
 from .metrics import api_requests, api_errors, render_metrics
 from .queue import Job, QueueClient
@@ -13,9 +14,16 @@ from .store import Store
 
 app=FastAPI(title="Academic Petition Triage Service", version="0.2.0")
 store=Store(settings.database_path); queue=QueueClient(settings.redis_url, settings.queue_backend)
+request_windows={}
 local_executor=ThreadPoolExecutor(max_workers=4, thread_name_prefix="local-queue-worker")
-try: graph=TriageGraph(RegulationIndex(settings.index_path), settings.max_graph_steps)
-except FileNotFoundError: graph=None
+def load_graph():
+    # A clean clone is runnable without a separate manual indexing step.
+    if not __import__("pathlib").Path(settings.index_path).exists():
+        ingest(settings.corpus_dir, settings.index_path)
+    return TriageGraph(RegulationIndex(settings.index_path), settings.max_graph_steps)
+
+try: graph=load_graph()
+except Exception: graph=None
 
 def process_local(job):
     try:
@@ -27,7 +35,23 @@ def process_local(job):
 
 @app.middleware("http")
 async def observe(request: Request, call_next):
-    response=await call_next(request); api_requests.labels(request.method,request.url.path,response.status_code).inc(); return response
+    # Lightweight per-process guardrail. Use a shared gateway for multi-replica deployments.
+    if request.url.path.startswith("/api/") and settings.rate_limit_per_minute > 0:
+        client=request.client.host if request.client else "unknown"
+        now=time.monotonic(); window=request_windows.setdefault(client, [])
+        window[:]=[stamp for stamp in window if now-stamp < 60]
+        if len(window) >= settings.rate_limit_per_minute:
+            api_errors.labels(request.url.path).inc()
+            return JSONResponse(status_code=429,content={"error":"rate_limit_exceeded","retry_after_seconds":60-int(now-window[0])})
+        window.append(now)
+    response=await call_next(request)
+    api_requests.labels(request.method,request.url.path,response.status_code).inc()
+    return response
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def web_client():
+    page=Path(__file__).parent/"static"/"index.html"
+    return HTMLResponse(page.read_text(encoding="utf-8"))
 
 @app.exception_handler(RequestValidationError)
 async def quarantine_invalid(request: Request, exc: RequestValidationError):
@@ -71,3 +95,11 @@ def feedback(payload: FeedbackRequest):
     run=store.get(payload.run_id)
     if not run: raise HTTPException(404,"run not found")
     store.feedback(payload.model_dump()); return {"accepted":True,"run_id":payload.run_id}
+
+@app.get("/api/feedback/summary")
+def feedback_summary():
+    return store.feedback_summary()
+
+@app.get("/api/quarantine")
+def quarantine_records(limit: int = 50):
+    return {"items": store.quarantine_items(max(1,min(limit,200)))}
