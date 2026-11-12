@@ -124,6 +124,13 @@ def test_docker_installs_lightweight_runtime_extra():
     assert "--timeout 120" in dockerfile and "--retries 5" in dockerfile
     assert '[full]' not in dockerfile
 
+def test_full_extra_contains_runtime_observability_dependencies():
+    import tomllib
+    from pathlib import Path
+    config=tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    full=" ".join(config["project"]["optional-dependencies"]["full"])
+    assert "opentelemetry-api" in full and "opentelemetry-sdk" in full
+
 def test_feedback_is_validated_and_run_linked():
     from fastapi.testclient import TestClient
     from app.main import app
