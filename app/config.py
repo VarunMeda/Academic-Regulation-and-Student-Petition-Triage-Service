@@ -19,6 +19,8 @@ class Settings:
     max_retries: int = int(os.getenv("MAX_RETRIES", "2"))
     rate_limit_per_minute: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "60"))
     queue_operation_timeout_seconds: float = float(os.getenv("QUEUE_OPERATION_TIMEOUT_SECONDS", "2"))
+    queue_poll_timeout_seconds: float = float(os.getenv("QUEUE_POLL_TIMEOUT_SECONDS", "2"))
+    queue_socket_timeout_seconds: float = float(os.getenv("QUEUE_SOCKET_TIMEOUT_SECONDS", "5"))
     retry_backoff_seconds: float = float(os.getenv("RETRY_BACKOFF_SECONDS", "0.25"))
     retry_backoff_max_seconds: float = float(os.getenv("RETRY_BACKOFF_MAX_SECONDS", "5"))
     circuit_failure_threshold: int = int(os.getenv("CIRCUIT_FAILURE_THRESHOLD", "3"))
@@ -29,6 +31,8 @@ class Settings:
     def __post_init__(self):
         if self.retrieval_backend not in {"lexical", "semantic"}:
             raise ValueError("RETRIEVAL_BACKEND must be lexical or semantic")
+        if self.queue_socket_timeout_seconds <= self.queue_poll_timeout_seconds:
+            raise ValueError("QUEUE_SOCKET_TIMEOUT_SECONDS must exceed QUEUE_POLL_TIMEOUT_SECONDS")
 
 settings = Settings()
 
