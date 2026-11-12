@@ -1,5 +1,5 @@
 """Bounded, tool-using agent graph with an optional LangGraph runtime."""
-import time
+import re, time
 from typing import Any, TypedDict
 from .corpus import RegulationIndex
 from .models import Citation, PetitionRequest, TriageResult
@@ -53,20 +53,54 @@ class ResearchVerificationAgent:
             except Exception:
                 if attempt == max_retries: return self._escalated(analysis, "tool failure after bounded retries")
         def cite(c): return Citation(source_id=c["source_id"],document=c["document"],page=c["page"],clause=c["clause"],passage=c["text"])
-        base_c=next((cite(c) for c in retrieved if "minimum attendance" in c["text"].lower() and "75 percent" in c["text"].lower()), None)
+        base_raw=next((c for c in retrieved if "minimum attendance" in c["text"].lower() and re.search(r"\bat least\s+\d+(?:\.\d+)?\s*percent", c["text"], re.I)), None)
+        base_c=cite(base_raw) if base_raw else None
         mod_c=next((cite(c) for c in retrieved if "condon" in c["text"].lower()), None)
         if not base_c: return self._escalated(analysis, "governing base provision not found")
-        if petition.attendance_percentage is not None and petition.prescribed_minimum is not None and petition.attendance_percentage < petition.prescribed_minimum and petition.medical_documented and mod_c:
-            citations=[base_c,mod_c]; claim="Attendance shortfall may be considered under the medical condonation provision, subject to committee review."
+        minimum_match=re.search(r"\bat least\s+(\d+(?:\.\d+)?)\s*percent", base_c.passage, re.I)
+        retrieved_minimum=float(minimum_match.group(1)) if minimum_match else None
+        supplied_minimum=petition.prescribed_minimum
+        if retrieved_minimum is None or supplied_minimum is None or petition.attendance_percentage is None:
+            return self._escalated(analysis, "attendance threshold could not be established from verified evidence", base_c=base_c)
+        conflicts=[]
+        if abs(supplied_minimum - retrieved_minimum) > 1e-6:
+            conflicts.append(f"supplied prescribed minimum {supplied_minimum:g}% conflicts with retrieved clause {base_c.clause} minimum {retrieved_minimum:g}%")
+        below_ordinary=petition.attendance_percentage < retrieved_minimum
+        if conflicts:
+            citations=[base_c]
+            if petition.medical_documented and petition.condonation_requested and mod_c:
+                citations.append(mod_c)
+            claim=(f"Attendance meets the supplied threshold of {supplied_minimum:g}%, but the supplied minimum conflicts with "
+                   f"retrieved clause {base_c.clause} ({retrieved_minimum:g}%). No final eligibility determination is made.")
+            return TriageResult(petition_facts=analysis["facts"],base_provision=base_c,modifying_provision=mod_c if len(citations) == 2 else None,
+                proposed_eligibility=claim,routing="refer-to-committee",human_review_required=True,verification="escalated: conflicting attendance thresholds",
+                conflicts=conflicts,citations=citations)
+        if not below_ordinary:
+            claim=(f"Attendance of {petition.attendance_percentage:g}% meets the retrieved ordinary minimum of "
+                   f"{retrieved_minimum:g}%; this is an advisory threshold assessment and not a final institutional decision.")
+            ok,msg=verify([base_c],retrieved,claim)
+            if not ok: return self._escalated(analysis, "citation verification failed", base_c=base_c)
+            return TriageResult(petition_facts=analysis["facts"],base_provision=base_c,proposed_eligibility=claim,
+                routing="grant-under-provision",human_review_required=False,verification=msg,citations=[base_c])
+        if petition.medical_documented and petition.condonation_requested and mod_c:
+            modifier_match=re.search(r"not below\s+(\d+(?:\.\d+)?)\s*percent", mod_c.passage, re.I)
+            condonation_floor=float(modifier_match.group(1)) if modifier_match else None
+            citations=[base_c,mod_c]
+            if condonation_floor is not None and petition.attendance_percentage < condonation_floor:
+                claim=(f"Attendance is below the retrieved medical-condonation threshold of {condonation_floor:g}%; "
+                       "the supplied evidence does not establish condonation eligibility and committee review is required.")
+            else:
+                claim="Attendance shortfall may be considered under the medical condonation provision, subject to committee review."
             ok,msg=verify(citations,retrieved,claim)
             if ok: return TriageResult(petition_facts=analysis["facts"],base_provision=base_c,modifying_provision=mod_c,proposed_eligibility=claim,routing="refer-to-committee",human_review_required=True,verification=msg,citations=citations)
             return self._escalated(analysis, "citation verification failed")
-        claim="The prescribed attendance requirement is not met on the supplied facts."
+        claim=(f"Attendance of {petition.attendance_percentage:g}% is below the retrieved ordinary minimum of "
+               f"{retrieved_minimum:g}% and no documented medical-condonation basis was supplied.")
         ok,msg=verify([base_c],retrieved,claim)
-        if not ok: return self._escalated(analysis, "citation verification failed")
+        if not ok: return self._escalated(analysis, "citation verification failed", base_c=base_c)
         return TriageResult(petition_facts=analysis["facts"],base_provision=base_c,proposed_eligibility=claim,routing="reject",human_review_required=False,verification=msg,citations=[base_c])
-    def _escalated(self, analysis, reason):
-        return TriageResult(petition_facts=analysis["facts"], proposed_eligibility="Cannot determine safely.", routing="refer-to-committee", human_review_required=True, verification="escalated: " + reason, citations=[])
+    def _escalated(self, analysis, reason, base_c=None):
+        return TriageResult(petition_facts=analysis["facts"], base_provision=base_c, proposed_eligibility="Cannot determine safely.", routing="refer-to-committee", human_review_required=True, verification="escalated: " + reason, citations=[base_c] if base_c else [])
 
 class TriageGraph:
     def __init__(self,index, max_steps: int = 8):

@@ -17,6 +17,45 @@ def test_critical_case(tmp_path):
     assert result.routing == "refer-to-committee" and len(result.citations) == 2
     assert result.verification.startswith("verified")
 
+def attendance_graph(tmp_path):
+    index = tmp_path / "attendance.json"
+    ingest("corpus/synthetic", str(index))
+    return TriageGraph(RegulationIndex(str(index)))
+
+def test_attendance_equal_to_supplied_threshold_is_not_reported_as_shortfall(tmp_path):
+    graph=attendance_graph(tmp_path)
+    result=graph.invoke(PetitionRequest(category="attendance", description="Attendance meets supplied threshold", attendance_percentage=100, prescribed_minimum=100))
+    assert "meets the supplied threshold" in result.proposed_eligibility
+    assert result.human_review_required is True
+    assert result.conflicts and "conflicts with retrieved clause" in result.conflicts[0]
+
+def test_attendance_above_retrieved_minimum_satisfies_ordinary_rule(tmp_path):
+    result=attendance_graph(tmp_path).invoke(PetitionRequest(category="attendance", description="Attendance above ordinary minimum", attendance_percentage=90, prescribed_minimum=75))
+    assert result.routing == "grant-under-provision"
+    assert result.human_review_required is False
+    assert "meets the retrieved ordinary minimum" in result.proposed_eligibility
+
+def test_attendance_below_minimum_without_medical_grounds_is_shortfall(tmp_path):
+    result=attendance_graph(tmp_path).invoke(PetitionRequest(category="attendance", description="Attendance below ordinary minimum", attendance_percentage=70, prescribed_minimum=75))
+    assert result.routing == "reject"
+    assert "below the retrieved ordinary minimum" in result.proposed_eligibility
+
+def test_medical_condonation_retrieves_both_provisions_and_escalates(tmp_path):
+    result=attendance_graph(tmp_path).invoke(PetitionRequest(category="attendance", description="Documented medical attendance shortfall", attendance_percentage=72, prescribed_minimum=75, medical_documented=True, condonation_requested=True))
+    assert result.routing == "refer-to-committee" and result.human_review_required is True
+    assert {c.clause for c in result.citations} == {"4.1", "7.3"}
+    assert result.base_provision.clause == "4.1" and result.modifying_provision.clause == "7.3"
+
+def test_attendance_below_condonation_threshold_is_not_granted(tmp_path):
+    result=attendance_graph(tmp_path).invoke(PetitionRequest(category="attendance", description="Attendance below condonation threshold", attendance_percentage=60, prescribed_minimum=75, medical_documented=True, condonation_requested=True))
+    assert result.routing == "refer-to-committee" and result.human_review_required is True
+    assert "below the retrieved medical-condonation threshold" in result.proposed_eligibility
+
+def test_conflicting_supplied_and_retrieved_minimum_escalates(tmp_path):
+    result=attendance_graph(tmp_path).invoke(PetitionRequest(category="attendance", description="Conflicting attendance threshold", attendance_percentage=70, prescribed_minimum=80))
+    assert result.routing == "refer-to-committee" and result.human_review_required is True
+    assert result.conflicts and "80%" in result.conflicts[0] and "75%" in result.conflicts[0]
+
 def test_validation_requires_attendance_fields():
     import pytest
     with pytest.raises(Exception): PetitionRequest(category="attendance", description="shortfall")
