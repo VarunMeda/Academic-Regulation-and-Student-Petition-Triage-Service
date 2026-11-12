@@ -102,6 +102,12 @@ def test_retry_delay_is_bounded():
     from app.reliability import retry_delay
     assert retry_delay(10, 0.1, 0.2, 0) == 0.2
 
+def test_job_traceparent_round_trips_through_memory_queue():
+    from app.queue import Job, QueueClient
+    queue=QueueClient(backend="memory")
+    queue.enqueue(Job("run-trace","corr-trace",{"category":"attendance"},0,"00-abc-def-01"))
+    assert queue.dequeue(timeout=0).traceparent == "00-abc-def-01"
+
 def test_runtime_extra_excludes_optional_embedding_stack():
     import tomllib
     from pathlib import Path

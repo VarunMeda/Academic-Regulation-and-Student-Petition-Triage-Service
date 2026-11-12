@@ -11,6 +11,7 @@ from .agents import TriageGraph
 from .metrics import api_requests, api_errors, render_metrics
 from .queue import Job, QueueClient
 from .store import Store
+from .tracing import configure as configure_tracing, inject as inject_traceparent
 
 app=FastAPI(title="Academic Petition Triage Service", version="0.2.0")
 store=Store(settings.database_path); queue=QueueClient(settings.redis_url, settings.queue_backend)
@@ -76,7 +77,7 @@ def metrics():
 async def submit(petition: PetitionRequest, x_correlation_id: str | None = Header(default=None), idempotency_key: str | None = Header(default=None)):
     cid=x_correlation_id or str(uuid.uuid4()); rid, duplicate=store.create(petition.model_dump(),cid,idempotency_key)
     if not duplicate:
-        job=Job(rid,cid,petition.model_dump()); queue.enqueue(job)
+        job=Job(rid,cid,petition.model_dump(),traceparent=inject_traceparent()); queue.enqueue(job)
         if settings.queue_backend != "redis":
             local_executor.submit(process_local,queue.dequeue(timeout=0))
     saved=store.get(rid); return {"run_id":rid,"status":saved["status"],"correlation_id":saved["correlation_id"],"duplicate":duplicate}
@@ -105,3 +106,5 @@ def feedback_summary():
 @app.get("/api/quarantine")
 def quarantine_records(limit: int = 50):
     return {"items": store.quarantine_items(max(1,min(limit,200)))}
+
+tracing_enabled = configure_tracing(app, settings.otel_service_name, settings.otel_exporter_endpoint)

@@ -11,6 +11,7 @@ class Job:
     correlation_id: str
     payload: dict
     attempt: int = 0
+    traceparent: str | None = None
 
 class QueueClient:
     def __init__(self, url: str | None = None, backend: str | None = None):
@@ -44,4 +45,4 @@ class QueueClient:
     def depth(self):
         return int(self._breaker.call(lambda: self._redis.llen("triage:jobs"))) if self.backend == "redis" else self._local.qsize()
     def retry(self, job: Job):
-        retries.inc(); self.enqueue(Job(job.run_id,job.correlation_id,job.payload,job.attempt+1))
+        retries.inc(); self.enqueue(Job(job.run_id,job.correlation_id,job.payload,job.attempt+1,job.traceparent))

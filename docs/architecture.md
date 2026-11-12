@@ -1,6 +1,6 @@
 # Architecture and implementation status
 
-The API validates and quarantines before publishing a Redis job. The worker consumes the job, reconstructs the validated Pydantic petition, runs the bounded LangGraph workflow, verifies citations and writes a terminal SQLite result. Prometheus scrapes API and worker metrics. The semantic index is a versioned local artifact; the default image uses the synthetic lexical index unless semantic dependencies and model weights are explicitly supplied.
+The API validates and quarantines before publishing a Redis job. The worker consumes the job, reconstructs the validated Pydantic petition, runs the bounded LangGraph workflow, verifies citations and writes a terminal SQLite result. Prometheus scrapes API and worker metrics. When the runtime extra is installed, FastAPI and worker spans are exported over OTLP and the W3C traceparent is carried in the queue job. The semantic index is a versioned local artifact; the default image uses the synthetic lexical index unless semantic dependencies and model weights are explicitly supplied.
 
 ```mermaid
 flowchart LR

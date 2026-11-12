@@ -135,7 +135,7 @@ The evaluation runner includes 22 synthetic scenarios. In the prepared workspace
 
 - No official university regulation corpus has been supplied or validated. The included corpus is synthetic.
 - Docker image build, Redis worker execution, `docker compose up`, service health and `docker compose --scale worker=3` must be run on the user's machine; they have not been verified in this workspace.
-- OpenTelemetry distributed tracing/export is not wired end-to-end yet; Jaeger is provisioned but the application does not yet emit OTLP spans.
+- OpenTelemetry OTLP export and W3C queue context propagation are wired when the runtime extra is installed; Jaeger trace ingestion remains deployment-dependent and is not verified in this workspace.
 - PDF/OCR ingestion is not implemented in this baseline.
 - Locust scripts are included, but no measured throughput/p50/p95 or scaling benchmark is claimed. Run the tests and record the output on your machine.
 - The deterministic baseline does not call a paid LLM provider; per-call token/cost accounting and a live model circuit breaker are therefore not applicable yet.

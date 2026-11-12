@@ -10,6 +10,8 @@ Run `docker compose config`, then `docker compose up --build`.
 
 The standard image installs `.[runtime]`, uses `RETRIEVAL_BACKEND=lexical`, builds a synthetic lexical index, and runs API/worker/Redis/Prometheus. The named `run-data` volume persists SQLite run state. For semantic containers, install `.[semantic]`, set `RETRIEVAL_BACKEND=semantic` and `EMBEDDING_MODEL`, and supply a local model cache explicitly. Model weights are not downloaded implicitly at startup. If semantic artifacts or the model are unavailable, readiness does not claim the service is ready.
 
+Compose sets `OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317` for API and worker. The application emits OTLP spans only when the runtime OpenTelemetry packages are installed; container startup and Jaeger trace retrieval must still be verified with Docker.
+
 For local semantic verification:
 
 ```powershell

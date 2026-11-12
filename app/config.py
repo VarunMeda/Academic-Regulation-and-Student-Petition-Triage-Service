@@ -23,6 +23,8 @@ class Settings:
     retry_backoff_max_seconds: float = float(os.getenv("RETRY_BACKOFF_MAX_SECONDS", "5"))
     circuit_failure_threshold: int = int(os.getenv("CIRCUIT_FAILURE_THRESHOLD", "3"))
     circuit_recovery_seconds: float = float(os.getenv("CIRCUIT_RECOVERY_SECONDS", "10"))
+    otel_service_name: str = os.getenv("OTEL_SERVICE_NAME", "academic-petition-triage")
+    otel_exporter_endpoint: str = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
 
     def __post_init__(self):
         if self.retrieval_backend not in {"lexical", "semantic"}:

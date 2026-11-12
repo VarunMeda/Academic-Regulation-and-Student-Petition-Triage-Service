@@ -7,9 +7,12 @@ services:
       INDEX_PATH: /service/data/index.json
       QUEUE_BACKEND: redis
       REDIS_URL: redis://redis:6379/0
+      OTEL_SERVICE_NAME: triage-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
     volumes: ["run-data:/service/runtime"]
     depends_on:
       redis: {condition: service_healthy}
+      jaeger: {condition: service_healthy}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
       interval: 10s
@@ -23,9 +26,12 @@ services:
       INDEX_PATH: /service/data/index.json
       QUEUE_BACKEND: redis
       REDIS_URL: redis://redis:6379/0
+      OTEL_SERVICE_NAME: triage-worker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
     volumes: ["run-data:/service/runtime"]
     depends_on:
       redis: {condition: service_healthy}
+      jaeger: {condition: service_healthy}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9101/metrics')"]
       interval: 10s

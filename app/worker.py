@@ -6,6 +6,7 @@ from .metrics import escalations, processing_latency, timeouts, worker_tasks
 from .queue import QueueClient
 from .store import Store
 from .reliability import ExecutionTimeout, retry_delay, run_with_timeout
+from .tracing import consume as consume_trace
 
 logging.basicConfig(format='{"level":"%(levelname)s","message":"%(message)s"}', level=logging.INFO)
 store=Store(settings.database_path); queue=QueueClient(settings.redis_url, settings.queue_backend)
@@ -14,7 +15,7 @@ try:
     graph=TriageGraph(RegulationIndex(settings.index_path, model_name, settings.retrieval_backend), settings.max_graph_steps)
 except FileNotFoundError: graph=None
 
-def handle(job):
+def _handle(job):
     started=time.perf_counter(); store.update(job.run_id,"running")
     try:
         if graph is None: raise RuntimeError("corpus index unavailable")
@@ -36,6 +37,10 @@ def handle(job):
             store.update(job.run_id,"pending",{"retrying":True,"attempt":job.attempt+1,"error":str(exc)}); queue.retry(job); worker_tasks.labels(outcome="retry").inc(); return False
         store.update(job.run_id,"failed",{"error":str(exc),"routing":"refer-to-committee","human_review_required":True}); worker_tasks.labels(outcome="failed").inc(); return False
     finally: processing_latency.observe(time.perf_counter()-started)
+
+def handle(job):
+    with consume_trace(job.traceparent, "triage.worker.consume"):
+        return _handle(job)
 
 def run_forever():
     from prometheus_client import start_http_server
