@@ -102,7 +102,7 @@ Invoke-RestMethod "http://localhost:8000/api/runs/$($response.run_id)/result"
 - **Tools**: corpus search, clause lookup, and lookup of petition fields.
 - **Queue**: Redis separates API submission from worker execution.
 - **Persistence**: SQLite stores run state, quarantine records and feedback.
-- **Retrieval**: deterministic lexical index works offline; optional sentence-transformers/FAISS dependencies are available through the `semantic` extra.
+- **Retrieval**: explicit `RETRIEVAL_BACKEND=lexical|semantic`; lexical is the offline default, while semantic mode loads the configured Sentence Transformers model and validates the FAISS artifact in both API and worker paths.
 - **Monitoring**: Prometheus scrape config, provisioned Grafana dashboard, and Jaeger service are included.
 
 ## Corpus ingestion

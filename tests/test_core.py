@@ -45,6 +45,13 @@ def test_metadata_preserved_and_missing_index_is_clear(tmp_path):
     with pytest.raises(FileNotFoundError, match="run python -m app.ingest"):
         RegulationIndex(str(tmp_path / "missing.json"))
 
+def test_semantic_backend_is_explicit_and_validates_artifacts(tmp_path):
+    import pytest
+    index = tmp_path / "index.json"
+    ingest("corpus/synthetic", str(index))
+    with pytest.raises(RuntimeError, match="requires embeddings"):
+        RegulationIndex(str(index), "missing-model", "semantic")
+
 def test_tools_and_injection_escalation(tmp_path):
     index = tmp_path / "index.json"; ingest("corpus/synthetic", str(index))
     from app.agents import PetitionTools, TriageGraph

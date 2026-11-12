@@ -8,7 +8,9 @@ from .store import Store
 
 logging.basicConfig(format='{"level":"%(levelname)s","message":"%(message)s"}', level=logging.INFO)
 store=Store(settings.database_path); queue=QueueClient(settings.redis_url, settings.queue_backend)
-try: graph=TriageGraph(RegulationIndex(settings.index_path), settings.max_graph_steps)
+try:
+    model_name = settings.embedding_model if settings.retrieval_backend == "semantic" else None
+    graph=TriageGraph(RegulationIndex(settings.index_path, model_name, settings.retrieval_backend), settings.max_graph_steps)
 except FileNotFoundError: graph=None
 
 def handle(job):

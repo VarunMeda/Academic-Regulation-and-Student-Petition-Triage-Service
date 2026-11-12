@@ -57,25 +57,42 @@ def ingest(corpus_dir: str, index_path: str, model_name: str | None = None) -> d
     return metadata
 
 class RegulationIndex:
-    def __init__(self, index_path: str, model_name: str | None = None):
+    def __init__(self, index_path: str, model_name: str | None = None, backend: str = "lexical"):
         p=Path(index_path)
         if not p.exists(): raise FileNotFoundError(f"No corpus index at {index_path}; run python -m app.ingest")
+        if backend not in {"lexical", "semantic"}: raise ValueError("backend must be lexical or semantic")
         self.data=json.loads(p.read_text(encoding="utf-8")); self.chunks=self.data["chunks"]; self.model=None; self.vector_index=None
+        self.backend=backend
+        if backend == "semantic" and not self.data.get("embeddings"):
+            raise RuntimeError("semantic retrieval requires embeddings; rebuild the index with --model-name")
+        if backend == "semantic" and not model_name:
+            raise RuntimeError("semantic retrieval requires an embedding model name")
         if self.data.get("embeddings") and model_name:
             try:
                 os.environ.setdefault("USE_TF", "0")
                 from sentence_transformers import SentenceTransformer
                 self.model=SentenceTransformer(model_name)
-            except Exception: pass
+            except Exception as exc:
+                if backend == "semantic":
+                    raise RuntimeError(f"embedding model unavailable: {type(exc).__name__}") from exc
         if self.data.get("embeddings"):
             try:
                 import faiss
                 vector_path=p.with_suffix(".faiss")
-                if vector_path.exists(): self.vector_index=faiss.read_index(str(vector_path))
-            except ImportError: pass
+                if vector_path.exists():
+                    self.vector_index=faiss.read_index(str(vector_path))
+                    dimension=len(self.data["embeddings"][0])
+                    if self.vector_index.d != dimension or self.vector_index.ntotal != len(self.chunks):
+                        raise RuntimeError("FAISS index dimensions or vector count do not match the JSON index")
+                elif backend == "semantic":
+                    raise RuntimeError(f"FAISS index missing at {vector_path}")
+            except ImportError as exc:
+                if backend == "semantic": raise RuntimeError("semantic retrieval requires faiss-cpu") from exc
+        if backend == "semantic" and self.model is None:
+            raise RuntimeError("semantic retrieval model was not loaded")
     def search(self, query: str, limit: int = 5, filters: dict | None = None) -> list[dict]:
         candidates=[c for c in self.chunks if not filters or all(c.get(k)==v for k,v in filters.items())]
-        if self.model and self.data.get("embeddings"):
+        if self.backend == "semantic":
             import numpy as np
             q=self.model.encode([query],normalize_embeddings=True).astype("float32")
             if self.vector_index is not None:

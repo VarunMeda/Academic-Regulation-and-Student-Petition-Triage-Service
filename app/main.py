@@ -20,7 +20,8 @@ def load_graph():
     # A clean clone is runnable without a separate manual indexing step.
     if not __import__("pathlib").Path(settings.index_path).exists():
         ingest(settings.corpus_dir, settings.index_path)
-    return TriageGraph(RegulationIndex(settings.index_path), settings.max_graph_steps)
+    model_name = settings.embedding_model if settings.retrieval_backend == "semantic" else None
+    return TriageGraph(RegulationIndex(settings.index_path, model_name, settings.retrieval_backend), settings.max_graph_steps)
 
 try: graph=load_graph()
 except Exception: graph=None
@@ -65,7 +66,8 @@ def ready():
     if graph is None: raise HTTPException(503,"corpus index unavailable; run python -m app.ingest")
     try: queue.ping()
     except Exception as exc: raise HTTPException(503,f"queue unavailable: {exc}")
-    return {"status":"ready","synthetic_corpus":True,"queue_backend":settings.queue_backend}
+    return {"status":"ready","synthetic_corpus":True,"queue_backend":settings.queue_backend,
+            "retrieval_backend":settings.retrieval_backend,"embedding_model":settings.embedding_model if settings.retrieval_backend == "semantic" else None}
 @app.get("/metrics")
 def metrics():
     body, content_type=render_metrics(); return Response(body,media_type=content_type)

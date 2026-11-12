@@ -21,6 +21,11 @@ def test_semantic_runtime_is_not_mistaken_for_fallback(tmp_path):
     assert loaded.vector_index is not None
     assert loaded.search("medical grounds attendance exception", 2)
 
+    configured=RegulationIndex(str(index_path), os.getenv("TRIAGE_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"), "semantic")
+    assert configured.backend == "semantic" and configured.model is not None
+    assert any(row["clause"] == "4.1" for row in configured.search("ordinary attendance minimum", 3))
+    assert any(row["clause"] == "7.3" for row in configured.search("medical condonation committee discretion", 3))
+
 def test_real_langgraph_runtime_executes_state_graph():
     pytest.importorskip("langgraph")
     from app.corpus import ingest, RegulationIndex
