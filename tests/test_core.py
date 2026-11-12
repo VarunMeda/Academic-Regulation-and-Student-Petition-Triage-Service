@@ -74,6 +74,13 @@ def test_api_quarantines_malformed_request():
     assert response.json()["error"] == "validation_failed"
     assert "correlation_id" in response.json()
 
+def test_student_portal_origin_is_allowed_for_api_requests():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    response=TestClient(app).options("/api/petitions",headers={"Origin":"http://localhost:3001","Access-Control-Request-Method":"POST"})
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3001"
+
 def test_metadata_preserved_and_missing_index_is_clear(tmp_path):
     import pytest
     index = tmp_path / "index.json"

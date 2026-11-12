@@ -2,6 +2,7 @@ import uuid, time
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response, HTMLResponse
 from .config import settings
@@ -14,6 +15,7 @@ from .store import Store
 from .tracing import configure as configure_tracing, inject as inject_traceparent
 
 app=FastAPI(title="Academic Petition Triage Service", version="0.2.0")
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3001", "http://127.0.0.1:3001"], allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
 store=Store(settings.database_path); queue=QueueClient(settings.redis_url, settings.queue_backend)
 request_windows={}
 local_executor=ThreadPoolExecutor(max_workers=4, thread_name_prefix="local-queue-worker")

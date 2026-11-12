@@ -14,3 +14,10 @@ __pycache__/
 .env.*
 !.env.example
 *.log
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+academic_petition_triage.egg-info/
+loadtest-results*.csv
+data/
+evaluation/results/

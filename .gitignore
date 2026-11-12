@@ -11,4 +11,7 @@ evaluation/results/*.md
 *.pyc
 coverage.xml
 .coverage
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
 

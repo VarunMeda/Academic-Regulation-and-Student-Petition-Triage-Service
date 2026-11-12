@@ -1,0 +1,2 @@
+import type { RunStatus } from "@/lib/types";
+export function StatusBadge({status}:{status:RunStatus|string}) { const styles:Record<string,string>={pending:"bg-amber-50 text-amber-700",running:"bg-blue-50 text-blue-700",completed:"bg-emerald-50 text-emerald-700",escalated:"bg-violet-50 text-violet-700",failed:"bg-red-50 text-red-700"}; return <span className={`rounded-full px-2.5 py-1 text-xs font-bold capitalize ${styles[status]||"bg-slate-100 text-slate-600"}`}>{status.replaceAll("_"," ")}</span>; }

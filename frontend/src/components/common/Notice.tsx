@@ -1,0 +1,2 @@
+import { AlertCircle, CheckCircle2, Info } from "lucide-react";
+export function Notice({kind="info",children}:{kind?:"info"|"error"|"success";children:React.ReactNode}) { const Icon=kind==="error"?AlertCircle:kind==="success"?CheckCircle2:Info; return <div className={`flex gap-3 rounded-xl border p-4 text-sm ${kind==="error"?"border-red-200 bg-red-50 text-red-800":kind==="success"?"border-emerald-200 bg-emerald-50 text-emerald-800":"border-blue-200 bg-blue-50 text-blue-800"}`}><Icon className="mt-0.5 shrink-0" size={18}/><div>{children}</div></div>; }

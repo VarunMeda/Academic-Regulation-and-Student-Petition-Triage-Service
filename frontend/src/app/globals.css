@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root { --ink:#10213b; --muted:#63748b; --line:#e4ebf3; --mist:#f5f8fc; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--mist); color:var(--ink); font-family:Arial, Helvetica, sans-serif; }
+button, input, textarea, select { font:inherit; }
+button { cursor:pointer; }
+@layer components {
+  .card { @apply rounded-2xl border border-line bg-white shadow-soft; }
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-mist; }
+  .field { @apply w-full rounded-xl border border-line bg-white px-3.5 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-navy focus:ring-2 focus:ring-blue-100; }
+  .eyebrow { @apply text-xs font-bold uppercase tracking-[.16em] text-teal; }
+}

@@ -17,13 +17,13 @@ docker compose up --build
 ```
 
 4. Open:
-   - Web client: http://localhost:8000/
+   - Student portal: http://localhost:3001
    - API docs: http://localhost:8000/docs
    - Prometheus: http://localhost:9090
    - Grafana: http://localhost:3000
    - Jaeger UI: http://localhost:16686
 
-The Compose stack contains API, worker, Redis, Prometheus, Grafana and Jaeger. API submission is asynchronous: it returns a `run_id`; poll `/api/runs/{run_id}` until `completed`, `escalated` or `failed`, then read `/api/runs/{run_id}/result`. The worker uses Redis in Compose. Run data is stored in a named Docker volume.
+The Compose stack contains the Next.js student portal, API, worker, Redis, Prometheus, Grafana and Jaeger. The browser portal calls the API at `http://localhost:8000`; the API enables CORS only for the local portal origins. API submission is asynchronous: it returns a `run_id`; the portal polls `/api/runs/{run_id}` until `completed`, `escalated` or `failed`, then reads `/api/runs/{run_id}/result`. The worker uses Redis in Compose. Run data is stored in a named Docker volume.
 
 To stop:
 
@@ -79,6 +79,21 @@ Invoke-RestMethod "http://localhost:8000/api/runs/$($response.run_id)/result"
 ```
 
 ## API surface
+
+## Student portal
+
+The `frontend/` directory contains the Next.js App Router student portal. It integrates the existing petition API without duplicating eligibility logic. The portal supports category-aware submission, idempotent asynchronous submission, status polling, evidence/provision/citation display, committee-review messaging and a help page. Because the backend has no authenticated student-listing endpoint, “My Petitions” shows only run IDs saved in the current browser and explicitly does not claim secure student history.
+
+For local frontend development:
+
+```powershell
+Set-Location frontend
+npm install
+$env:NEXT_PUBLIC_API_BASE_URL="http://localhost:8000"
+npm run dev
+```
+
+Open http://localhost:3000 locally, or http://localhost:3001 with Compose. The API docs remain at http://localhost:8000/docs; Prometheus, Grafana and Jaeger remain at ports 9090, 3000 and 16686 respectively.
 
 | Endpoint | Purpose |
 |---|---|
