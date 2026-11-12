@@ -11,6 +11,8 @@ escalations = Counter("triage_escalations_total", "Escalated runs", ["reason"])
 retries = Counter("triage_retries_total", "Retried jobs")
 ingestion_duration = Gauge("triage_ingestion_duration_seconds", "Last corpus ingestion duration")
 ingestion_chunks = Gauge("triage_ingestion_chunks", "Last corpus chunk count")
+timeouts = Counter("triage_timeouts_total", "Bounded operation timeouts", ["operation"])
+circuit_state = Gauge("triage_circuit_state", "Circuit state: 0 closed, 1 half-open, 2 open", ["component"])
 
 def render_metrics():
     return generate_latest(), CONTENT_TYPE_LATEST

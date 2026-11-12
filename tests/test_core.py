@@ -85,6 +85,23 @@ def test_queue_message_contains_only_validated_job_data():
     job=queue.dequeue(timeout=0)
     assert job.run_id == "run-1" and job.correlation_id == "corr-1" and "category" in job.payload
 
+def test_circuit_breaker_opens_and_recovers():
+    import time
+    import pytest
+    from app.reliability import CircuitBreaker
+    breaker=CircuitBreaker(failure_threshold=2, recovery_seconds=0.01)
+    for _ in range(2):
+        try: breaker.call(lambda: (_ for _ in ()).throw(RuntimeError("down")))
+        except RuntimeError: pass
+    assert breaker.state == "OPEN"
+    with pytest.raises(RuntimeError, match="open"): breaker.call(lambda: True)
+    time.sleep(0.02)
+    assert breaker.call(lambda: "ok") == "ok" and breaker.state == "CLOSED"
+
+def test_retry_delay_is_bounded():
+    from app.reliability import retry_delay
+    assert retry_delay(10, 0.1, 0.2, 0) == 0.2
+
 def test_runtime_extra_excludes_optional_embedding_stack():
     import tomllib
     from pathlib import Path

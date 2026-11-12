@@ -3,6 +3,7 @@ import json, queue as local_queue
 from dataclasses import dataclass
 from .config import settings
 from .metrics import queue_depth, retries
+from .reliability import CircuitBreaker
 
 @dataclass
 class Job:
@@ -17,22 +18,23 @@ class QueueClient:
         self.url=url or getattr(settings, "redis_url", "redis://localhost:6379/0")
         self._local=local_queue.Queue()
         self._redis=None
+        self._breaker=CircuitBreaker(settings.circuit_failure_threshold, settings.circuit_recovery_seconds)
         if self.backend == "redis":
             try:
                 import redis
-                self._redis=redis.Redis.from_url(self.url, decode_responses=True)
+                self._redis=redis.Redis.from_url(self.url, decode_responses=True, socket_timeout=settings.queue_operation_timeout_seconds, socket_connect_timeout=settings.queue_operation_timeout_seconds)
             except ImportError as exc: raise RuntimeError("Redis queue requires the redis package") from exc
     def ping(self):
-        if self.backend == "redis": self._redis.ping(); return True
+        if self.backend == "redis": self._breaker.call(self._redis.ping); return True
         return True
     def enqueue(self, job: Job):
         raw=json.dumps(job.__dict__)
-        if self.backend == "redis": self._redis.rpush("triage:jobs", raw)
+        if self.backend == "redis": self._breaker.call(lambda: self._redis.rpush("triage:jobs", raw))
         else: self._local.put(raw)
         queue_depth.set(self.depth())
     def dequeue(self, timeout: int = 1) -> Job | None:
         if self.backend == "redis":
-            item=self._redis.blpop("triage:jobs", timeout=timeout)
+            item=self._breaker.call(lambda: self._redis.blpop("triage:jobs", timeout=timeout))
             raw=item[1] if item else None
         else:
             try: raw=self._local.get(timeout=timeout)
@@ -40,6 +42,6 @@ class QueueClient:
         if not raw: return None
         queue_depth.set(self.depth()); return Job(**json.loads(raw))
     def depth(self):
-        return int(self._redis.llen("triage:jobs")) if self.backend == "redis" else self._local.qsize()
+        return int(self._breaker.call(lambda: self._redis.llen("triage:jobs"))) if self.backend == "redis" else self._local.qsize()
     def retry(self, job: Job):
         retries.inc(); self.enqueue(Job(job.run_id,job.correlation_id,job.payload,job.attempt+1))

@@ -18,6 +18,11 @@ class Settings:
     queue_backend: str = os.getenv("QUEUE_BACKEND", "memory")
     max_retries: int = int(os.getenv("MAX_RETRIES", "2"))
     rate_limit_per_minute: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "60"))
+    queue_operation_timeout_seconds: float = float(os.getenv("QUEUE_OPERATION_TIMEOUT_SECONDS", "2"))
+    retry_backoff_seconds: float = float(os.getenv("RETRY_BACKOFF_SECONDS", "0.25"))
+    retry_backoff_max_seconds: float = float(os.getenv("RETRY_BACKOFF_MAX_SECONDS", "5"))
+    circuit_failure_threshold: int = int(os.getenv("CIRCUIT_FAILURE_THRESHOLD", "3"))
+    circuit_recovery_seconds: float = float(os.getenv("CIRCUIT_RECOVERY_SECONDS", "10"))
 
     def __post_init__(self):
         if self.retrieval_backend not in {"lexical", "semantic"}:

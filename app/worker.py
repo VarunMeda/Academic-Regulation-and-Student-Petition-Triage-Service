@@ -2,9 +2,10 @@
 from .agents import TriageGraph
 from .config import settings
 from .corpus import RegulationIndex
-from .metrics import escalations, processing_latency, worker_tasks
+from .metrics import escalations, processing_latency, timeouts, worker_tasks
 from .queue import QueueClient
 from .store import Store
+from .reliability import ExecutionTimeout, retry_delay, run_with_timeout
 
 logging.basicConfig(format='{"level":"%(levelname)s","message":"%(message)s"}', level=logging.INFO)
 store=Store(settings.database_path); queue=QueueClient(settings.redis_url, settings.queue_backend)
@@ -18,13 +19,20 @@ def handle(job):
     try:
         if graph is None: raise RuntimeError("corpus index unavailable")
         from .models import PetitionRequest
-        result=graph.invoke(PetitionRequest.model_validate(job.payload))
+        result=run_with_timeout(lambda: graph.invoke(PetitionRequest.model_validate(job.payload)), settings.run_timeout_seconds)
         status="escalated" if result.human_review_required else "completed"
         store.update(job.run_id,status,result.model_dump()); worker_tasks.labels(outcome="escalated" if result.human_review_required else "success").inc()
         if result.human_review_required: escalations.labels(reason="human_review").inc()
         return True
+    except ExecutionTimeout as exc:
+        timeouts.labels(operation="worker_graph").inc()
+        if job.attempt < settings.max_retries:
+            time.sleep(retry_delay(job.attempt, settings.retry_backoff_seconds, settings.retry_backoff_max_seconds))
+            store.update(job.run_id,"pending",{"retrying":True,"attempt":job.attempt+1,"error":str(exc)}); queue.retry(job); worker_tasks.labels(outcome="retry").inc(); return False
+        store.update(job.run_id,"failed",{"error":str(exc),"routing":"refer-to-committee","human_review_required":True}); worker_tasks.labels(outcome="failed").inc(); return False
     except Exception as exc:
         if job.attempt < settings.max_retries:
+            time.sleep(retry_delay(job.attempt, settings.retry_backoff_seconds, settings.retry_backoff_max_seconds))
             store.update(job.run_id,"pending",{"retrying":True,"attempt":job.attempt+1,"error":str(exc)}); queue.retry(job); worker_tasks.labels(outcome="retry").inc(); return False
         store.update(job.run_id,"failed",{"error":str(exc),"routing":"refer-to-committee","human_review_required":True}); worker_tasks.labels(outcome="failed").inc(); return False
     finally: processing_latency.observe(time.perf_counter()-started)
