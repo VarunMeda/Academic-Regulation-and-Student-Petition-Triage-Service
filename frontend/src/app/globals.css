@@ -1,15 +1,39 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-:root { --ink:#10213b; --muted:#63748b; --line:#e4ebf3; --mist:#f5f8fc; }
-* { box-sizing:border-box; }
-body { margin:0; background:var(--mist); color:var(--ink); font-family:Arial, Helvetica, sans-serif; }
-button, input, textarea, select { font:inherit; }
-button { cursor:pointer; }
+
+:root {
+  color-scheme: light;
+  --ink: #14233b;
+  --muted: #64748b;
+  --line: #e5eaf2;
+  --mist: #f4f7fb;
+  --navy: #183b66;
+  --teal: #07877f;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 85% 0%, rgba(219,234,254,.35), transparent 34rem), var(--mist);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+::selection { background: #cce9e7; color: #12344f; }
+:focus-visible { outline: 3px solid rgba(8,135,127,.35); outline-offset: 2px; }
 @layer components {
-  .card { @apply rounded-2xl border border-line bg-white shadow-soft; }
-  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-mist; }
-  .field { @apply w-full rounded-xl border border-line bg-white px-3.5 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-navy focus:ring-2 focus:ring-blue-100; }
-  .eyebrow { @apply text-xs font-bold uppercase tracking-[.16em] text-teal; }
+  .card { @apply rounded-2xl border border-line bg-white; box-shadow: 0 8px 28px rgba(20,35,59,.045); transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease; }
+  a.card:hover { transform: translateY(-2px); border-color: #d4deeb; box-shadow: 0 14px 34px rgba(20,35,59,.08); }
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white transition; box-shadow: 0 5px 14px rgba(24,59,102,.16); }
+  .btn-primary:hover { @apply bg-ink; transform: translateY(-1px); }
+  .btn-primary:disabled { @apply cursor-not-allowed opacity-50; transform: none; box-shadow: none; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition; }
+  .btn-secondary:hover { @apply bg-mist; border-color: #cbd5e1; }
+  .field { @apply w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400; }
+  .field:focus { border-color: #168b85; box-shadow: 0 0 0 4px rgba(8,135,127,.10); }
+  .eyebrow { @apply text-[11px] font-bold uppercase tracking-[.18em] text-teal; }
 }

@@ -139,18 +139,20 @@ The index records document names, versions, chunk counts and build time. Keep th
 
 ## Tests and evaluation
 
+See [`docs/DEMO_PRESENTATION_GUIDE.md`](docs/DEMO_PRESENTATION_GUIDE.md) for a timed presentation flow and live-demo checklist.
+
 ```powershell
 pytest -q
 python evaluation/run_evaluation.py
 ```
 
-The evaluation runner includes 22 synthetic scenarios. In the prepared workspace, the latest deterministic evaluation reported context relevance 1.0000, groundedness 0.5455, faithfulness 0.5455, citation correctness 1.0000, routing correctness 1.0000, human-review correctness 1.0000, unsupported claim 0.0000, hallucination 0.0000 and injection resistance 1.0000. These are synthetic-rule test results, not evidence of accuracy on real university regulations. Investigate low groundedness/faithfulness before presenting quality claims.
+The evaluation runner includes 22 synthetic scenarios. In the prepared workspace, the latest deterministic evaluation reported context relevance 1.0000, groundedness 0.5000, faithfulness 0.5000, citation correctness 1.0000, routing correctness 1.0000, human-review correctness 1.0000, unsupported claim 0.0000, hallucination 0.0000 and injection resistance 1.0000. These are synthetic-rule test results, not evidence of accuracy on real university regulations. Groundedness and faithfulness remain modest and should be discussed as limitations; do not present these synthetic metrics as real-world accuracy.
 
 ## Known limitations — do not claim these are complete
 
 - No official university regulation corpus has been supplied or validated. The included corpus is synthetic.
 - Docker image build, Redis worker execution, `docker compose up`, service health and `docker compose --scale worker=3` must be run on the user's machine; they have not been verified in this workspace.
-- OpenTelemetry OTLP export and W3C queue context propagation are wired when the runtime extra is installed; Jaeger trace ingestion remains deployment-dependent and is not verified in this workspace.
+- OpenTelemetry FastAPI instrumentation and W3C trace-context propagation are wired when the runtime extra is installed; successful Jaeger trace ingestion remains deployment-dependent and is not verified in this workspace.
 - PDF/OCR ingestion is not implemented in this baseline.
 - Locust scripts are included, but no measured throughput/p50/p95 or scaling benchmark is claimed. Run the tests and record the output on your machine.
 - The deterministic baseline does not call a paid LLM provider; per-call token/cost accounting and a live model circuit breaker are therefore not applicable yet.
