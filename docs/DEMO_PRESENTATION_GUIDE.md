@@ -12,7 +12,7 @@
 - **Research & Verification Agent:** retrieves base and modifying provisions, checks citation passages and selects a safe routing outcome.
 - **Redis + worker:** decouple API acceptance from background processing in Docker Compose. The local development fallback uses an in-process queue.
 - **SQLite:** stores run status, results, quarantine records and feedback.
-- **Prometheus/Grafana/Jaeger:** provide metrics dashboards and optional distributed tracing when the Compose stack and runtime dependencies are running.
+- **Prometheus/Grafana/Jaeger:** provide metrics dashboards and distributed tracing in the verified Compose runtime. Prometheus reports API and worker targets `UP`; Jaeger contains petition traces including `triage.worker.consume`. Grafana is healthy and provisioned, although its authenticated dashboard API returned HTTP 401 during the audit.
 
 ## 3. Live demo sequence (3–4 minutes)
 
@@ -25,7 +25,7 @@
 7. On the tracking page, show the run reference and processing timeline.
 8. Show the result: the system should retrieve synthetic Clause 4.1 (ordinary 75% minimum) and Clause 7.3 (medical condonation between 65% and the ordinary minimum), verify the passages, and route the case to committee review because the committee retains discretion.
 9. Expand the citation panel to show source, page, clause and passage.
-10. If time permits, show `/docs` for the API and Prometheus/Grafana for monitoring.
+10. If time permits, show `/docs` for the API, Prometheus targets/metrics, Grafana health, and the Jaeger trace containing `triage.worker.consume`.
 
 ## 4. What to say about the result
 
@@ -38,7 +38,11 @@
 - The portal has no authentication. “My Petitions” displays run IDs saved in the current browser, not a secure student account history.
 - PDF/OCR ingestion, production-grade shared rate limiting, measured load/scaling benchmarks and live LLM token/cost accounting are not part of the verified baseline.
 - Groundedness and faithfulness in the 22-case synthetic evaluation are each 0.50. Do not claim perfect AI accuracy.
-- Docker/Redis/Grafana/Jaeger deployment and the frontend production build must be verified on the presentation machine.
+- The seven-service Docker/Redis/Grafana/Jaeger stack and frontend production build were verified locally. Worker scaling was not verified.
+- Grafana is healthy and its dashboard is provisioned, but authenticated dashboard API access returned HTTP 401; do not claim that dashboard panels were independently inspected.
+- No frontend automated test suite is configured. `npm run lint` remains incomplete because ESLint configuration is missing, and browser responsive testing was not completed.
+- `npm audit` reported one high and one critical frontend dependency vulnerability.
+- A 60-second, 5-user Locust run produced 505 requests and 445 failures (88.12%), primarily HTTP 429. Aggregate HTTP p95 was 24 ms; do not claim the complete-run p95 SLO was achieved.
 
 ## 6. Before presenting
 
@@ -49,6 +53,9 @@
 - [ ] Open `http://localhost:8000/health/ready` and confirm it returns `ready`.
 - [ ] Open `http://localhost:8000/docs` to confirm Swagger UI loads.
 - [ ] Submit the 70% / 75% medical-condonation demo petition and confirm committee escalation plus both citations.
+- [ ] Confirm Prometheus reports both API and worker targets `UP`.
+- [ ] If showing Grafana, disclose that its health/provisioning were verified but authenticated dashboard API access returned 401.
+- [ ] If showing Jaeger, open the petition trace and point out `triage.worker.consume`.
 - [ ] Keep the result page open for the panel; have the architecture diagram and this guide ready.
 
 ## 7. Closing (20 seconds)

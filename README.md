@@ -151,12 +151,24 @@ The evaluation runner includes 22 synthetic scenarios. In the prepared workspace
 ## Known limitations — do not claim these are complete
 
 - No official university regulation corpus has been supplied or validated. The included corpus is synthetic.
-- Docker image build, Redis worker execution, `docker compose up`, service health and `docker compose --scale worker=3` must be run on the user's machine; they have not been verified in this workspace.
-- OpenTelemetry FastAPI instrumentation and W3C trace-context propagation are wired when the runtime extra is installed; successful Jaeger trace ingestion remains deployment-dependent and is not verified in this workspace.
+- Docker image build, Redis worker execution, `docker compose up`, service health and petition-specific Jaeger tracing were verified for the seven-service local Compose stack. Worker scaling with `docker compose --scale worker=3` has not been verified.
+- Grafana is healthy with its dashboard and Prometheus datasource provisioned, but authenticated dashboard API access returned HTTP 401; dashboard panel rendering was not independently verified.
 - PDF/OCR ingestion is not implemented in this baseline.
-- Locust scripts are included, but no measured throughput/p50/p95 or scaling benchmark is claimed. Run the tests and record the output on your machine.
+- A 60-second Locust run with 5 users produced 505 requests and 445 failures (88.12%), primarily HTTP 429 rate-limit responses. Aggregate HTTP request p95 was 24 ms; this does not establish the complete-run p95 <= 10 second SLO, and no successful load benchmark is claimed.
+- No frontend automated test suite is configured. The production build passed, but `npm run lint` stops at the interactive ESLint setup prompt because ESLint configuration is incomplete.
+- Browser-level responsive testing was not completed.
+- `npm audit` reported one high and one critical vulnerability in the frontend dependency tree; remediation requires a separate dependency upgrade and compatibility review.
 - The deterministic baseline does not call a paid LLM provider; per-call token/cost accounting and a live model circuit breaker are therefore not applicable yet.
 - Prompt-variant comparison and before/after TruLens-style evaluation need additional implementation and real corpus-grounded expected answers.
 - The in-memory rate limiter is per process; use a shared gateway/Redis implementation for multiple API replicas.
+
+Latest integration audit results:
+
+- Backend suite: **35 passed, 1 skipped**. With `TRIAGE_SEMANTIC_TEST=1`, the genuine Sentence Transformers and FAISS integration test passed.
+- Frontend production build and type checking passed. No frontend automated test suite is configured, and `npm run lint` remains incomplete because ESLint configuration is not present.
+- All seven Compose services started successfully: frontend, API, worker, Redis, Prometheus, Grafana and Jaeger. API and frontend health checks passed.
+- A synthetic attendance petition was accepted with HTTP 202, processed through Redis and the worker, and escalated with verified Clauses 4.1 and 7.3.
+- Prometheus reported both API and worker scrape targets `UP`. Grafana was healthy and its dashboard was provisioned, but its authenticated dashboard API returned HTTP 401, so dashboard panel rendering was not independently verified.
+- Jaeger contained a petition-specific trace spanning the API and worker, including the `triage.worker.consume` operation.
 
 Do not edit evaluation reports to claim measurements you have not run. Keep incident logs to genuine development incidents only.
